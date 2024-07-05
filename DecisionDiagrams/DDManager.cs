@@ -189,6 +189,11 @@ namespace DecisionDiagrams
         public int NumVariables { get => this.numVariables; }
 
         /// <summary>
+        /// Acts as a cache for the function NodeCount.
+        /// </summary>
+        static HashSet<DDIndex> visitedNodesNodeCount = new HashSet<DDIndex>();
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="DDManager{DDNode}"/> class.
         /// </summary>
         /// <param name="numNodes">Initial number of nodes to allocate.</param>
@@ -1304,9 +1309,11 @@ namespace DecisionDiagrams
         /// </summary>
         /// <param name="value">The decision diagram.</param>
         /// <returns>The number of nodes in the diagram.</returns>
+        /// TODO maybe use a Dictionary?
         public int NodeCount(DD value)
         {
-            return this.NodeCount(value.Index, new HashSet<DDIndex>());
+            visitedNodesNodeCount.Clear();
+            return this.NodeCount(value.Index, visitedNodesNodeCount);
         }
 
         /// <summary>

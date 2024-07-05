@@ -18,12 +18,14 @@ namespace DecisionDiagrams.Bench
         /// <param name="args">Command line arguments.</param>
         static void Main(string[] args)
         {
-            var manager = new DDManager<CBDDNode>();
-            var q = new Queens<CBDDNode>(manager, 12);
+            GenerateCNF.generateCNFs(18, 4 * 18, 30);
 
-            var timer = System.Diagnostics.Stopwatch.StartNew();
-            q.Run();
-            Console.WriteLine(timer.ElapsedMilliseconds);
+            // var manager = new DDManager<CBDDNode>();
+            // var q = new Queens<CBDDNode>(manager, 13);
+
+            // var timer = System.Diagnostics.Stopwatch.StartNew();
+            // q.RunCompile();
+            // Console.WriteLine($"Time elapsed: {timer.ElapsedMilliseconds} ms");
         }
     }
 }

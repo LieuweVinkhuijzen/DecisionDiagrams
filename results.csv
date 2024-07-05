@@ -1,0 +1,10 @@
+nqueens,strategy,runtime,modelcount
+9,fractal,119,352
+9,linear,999,352
+10,linear,5414,724
+10,fractal,1416,724
+11,linear,30577,2680
+11,fractal,2099,2680
+12,linear,188074
+12,fractal,31965,14200
+13,fractal,224164,73712

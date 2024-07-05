@@ -5,6 +5,7 @@
 namespace DecisionDiagrams.Bench
 {
     using System;
+    using System.ComponentModel.DataAnnotations;
     using DecisionDiagrams;
 
     /// <summary>
@@ -24,6 +25,8 @@ namespace DecisionDiagrams.Bench
 
         /// <summary>
         /// Creates a new instance of the <see cref="Queens{T}"/> class.
+        /// Satcount when n=12:  14200.
+        /// Satcount when n=11:  4921.
         /// </summary>
         /// <param name="manager">The manager object.</param>
         /// <param name="boardSize">The size of the board.</param>
@@ -52,15 +55,20 @@ namespace DecisionDiagrams.Bench
         {
             PlaceQueenInEachRow();
 
+            Console.WriteLine($"After placing queen in each row, DD contains {this.manager.NodeCount(problemEncoding)} nodes.");
+
             for (int i = 0; i < this.boardSize; i++)
             {
                 for (int j = 0; j < this.boardSize; j++)
                 {
                     // System.Console.WriteLine(GC.GetTotalMemory(true) / 1000 / 1000);
-                    Console.WriteLine($"Adding position {i}, {j}");
+                    Console.WriteLine($"Adding position {i}, {j}  -- currently at {this.manager.NodeCount(problemEncoding)} nodes.");
                     Build(i, j);
                 }
             }
+
+            Console.WriteLine($"\n // The number of ways to put {this.boardSize} queens on the board");
+            Console.WriteLine($"Satcount: {this.manager.SatCount(problemEncoding)}");
 
             /* var assignment = this.manager.Sat(this.problemEncoding);
 
@@ -71,6 +79,22 @@ namespace DecisionDiagrams.Bench
                     Console.WriteLine($"[{i}, {j}] = {assignment.Get(this.variables[i, j])}");
                 }
             } */
+        }
+
+        public void RunCompile() {
+            Compiler<T> compiler = new (manager);
+            // Add the constraints to the compiler
+            PlaceQueenInEachRowAddConstraints(compiler);
+            for (int i = 0; i < boardSize; i++) {
+                for (int j = 0; j < boardSize; j++) {
+                    addQueenConstraints(compiler, i, j);
+                }
+            }
+            // compiler.compilationStrategy = Compiler<T>.CompilationStrategy.linear;
+            compiler.compilationStrategy = Compiler<T>.CompilationStrategy.fractalCompilation;
+            DD queens = compiler.Compile();
+            Console.WriteLine($"\n // The number of ways to put {this.boardSize} queens on the board");
+            Console.WriteLine($"Satcount: {this.manager.SatCount(queens)}");
         }
 
         /// <summary>
@@ -132,8 +156,47 @@ namespace DecisionDiagrams.Bench
             this.problemEncoding = manager.And(this.problemEncoding, manager.And(a, manager.And(b, manager.And(c, d))));
         }
 
+        private void addQueenConstraints(Compiler<T> compiler, int i, int j) {
+            // no other queens in the same column
+            for (int l = 0; l < this.boardSize; l++) {
+                if (l != j) {
+                    compiler.addConstraint(manager.Implies(boardConstraints[i, j], manager.Not(boardConstraints[i, l])));
+                }
+            }
+
+            // no other queens in the same row
+            for (int k = 0; k < this.boardSize; k++) {
+                if (k != i) {
+                    compiler.addConstraint(manager.Implies(boardConstraints[i, j], manager.Not(boardConstraints[k, j])));
+                }
+            }
+
+            // no other queens in the same up right diagonal
+            for (int k = 0; k < this.boardSize; k++) {
+                int ll = k - i + j;
+                if (ll >= 0 && ll < this.boardSize) {
+                    if (k != i) {
+                        compiler.addConstraint(manager.Implies(boardConstraints[i, j], manager.Not(boardConstraints[k, ll])));
+                    }
+                }
+            }
+
+            // no other queens in the same down right diagonal
+            for (int k = 0; k < this.boardSize; k++)
+            {
+                int ll = i + j - k;
+                if (ll >= 0 && ll < this.boardSize) {
+                    if (k != i) {
+                        compiler.addConstraint(manager.Implies(this.boardConstraints[i, j], manager.Not(this.boardConstraints[k, ll])));
+                    }
+                }
+            }
+        }
+
         /// <summary>
         /// Place a queen in each row.
+        /// More precisely, adds to this.problemEncoding the constraint that in each row, there is at least one queen
+        /// This is a conjunction of disjunctions.
         /// </summary>
         private void PlaceQueenInEachRow()
         {
@@ -146,6 +209,17 @@ namespace DecisionDiagrams.Bench
                 }
 
                 this.problemEncoding = manager.And(this.problemEncoding, e);
+            }
+        }
+
+        private void PlaceQueenInEachRowAddConstraints(Compiler<T> compiler) {
+            DD row;
+            for (int i = 0; i < this.boardSize; i++) {
+                row = manager.False();
+                for (int j = 0; j < this.boardSize; j++) {
+                    row = manager.Or(row, this.boardConstraints[i, j]);
+                }
+                compiler.addConstraint(row);
             }
         }
     }
