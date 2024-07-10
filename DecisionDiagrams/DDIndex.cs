@@ -5,6 +5,7 @@
 namespace DecisionDiagrams
 {
     using System;
+    using System.ComponentModel;
 
     /// <summary>
     /// Decision diagram index that serves as a pointer into
@@ -123,6 +124,10 @@ namespace DecisionDiagrams
         public bool Equals(DDIndex other)
         {
             return this.Index == other.Index;
+        }
+
+        public bool isComplementOf(DDIndex other) {
+            return this.GetPosition() == other.GetPosition() && (this.IsComplemented() ^ other.IsComplemented());
         }
 
         /// <summary>

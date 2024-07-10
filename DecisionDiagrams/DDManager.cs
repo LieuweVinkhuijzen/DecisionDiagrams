@@ -222,6 +222,11 @@ namespace DecisionDiagrams
                 nodeFactory.Manager = this;
                 nodeFactory.MaxVariables = (long)(1U << 15) - 1;
             }
+            else if (typeof(T) == typeof(SingleVarOpDDNode) {
+                nodeFactory = (IDDNodeFactory<T>)(object)new SingleVarOpDDFactory();
+                nodeFactory.Manager = this;
+                nodeFactory.MaxVariables = (long)(1U << 31) - 1;
+            }
             else
             {
                 Debug.Assert(typeof(T) == typeof(BDDNode));
@@ -2239,6 +2244,10 @@ namespace DecisionDiagrams
         private int EnsurePowerOfTwo(int arg)
         {
             return Bitops.NextPowerOfTwo(arg);
+        }
+
+        public T getNodeFromIndex(DDIndex index) {
+            return this.MemoryPool[index.GetPosition()];
         }
 
         /// <summary>
