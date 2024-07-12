@@ -75,7 +75,7 @@ namespace DecisionDiagrams
     }
 
     public bool isVariableAnd(int var) {
-        return this.Variable == var && isPositiveVariableAnd();
+        return this.Variable == var && isVariableAnd();
     }
 
     public bool isNotVariableAnd(int var) {

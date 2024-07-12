@@ -33,39 +33,7 @@ namespace DecisionDiagrams
         private int getOpVariableIndex(SingleVarOpDDNode x, SingleVarOpDDNode y) {
             return Math.Max(x.Variable, y.Variable) + 1;
         }
-
-        static ArrayList fixedValues = new ArrayList();
-
-        /// <summary>
-        /// Computes the conjunction of a and b; specifically, constructs a DDIndex representing a AND b
-        /// TODO use a cache
-        /// Note: this procedure does NOT use the Manager. Instead, it takes on the responsibility of cache itself
-        /// </summary>
-        /// <param name="aEdge"></param>
-        /// <param name="a"></param>
-        /// <param name="bEdge"></param>
-        /// <param name="b"></param>
-        /// <returns></returns>
-        /// <exception cref="System.NotImplementedException"></exception>
-        public DDIndex And(DDIndex aEdge, DDIndex bEdge) {
-            SingleVarOpDDNode a = this.Manager.getNodeFromIndex(aEdge);
-            SingleVarOpDDNode b = this.Manager.getNodeFromIndex(bEdge);
-            DDIndex resultLow, resultHigh;
-            int resultVariable;
-            DDIndex result;
-            KeyValuePair<int, int> assignment;
-            /// Base cases
-            if (aEdge.IsZero()) return DDIndex.False;
-            if (bEdge.IsZero()) return DDIndex.False;
-            if (aEdge.IsOne()) return bEdge;
-            if (bEdge.IsOne()) return aEdge;
-            if (aEdge.Equals(bEdge)) return aEdge;
-            if (aEdge.isComplementOf(bEdge)) return DDIndex.False;
-            if (a.Variable == b.Variable) {
-                resultLow = And(a.Low, b.Low);
-                resultHigh = And(a.High, b.High);
-                resultVariable = a.Variable;
-            }
+            // TODO I used to think that this would be faster
             // if (a.Variable == b.Variable) {
             //     // Can be summarized as if a.low == 0 then result.low == 0 and a.high == 0 implies result.high == 0
             //     resultVariable = a.Variable;
@@ -93,8 +61,49 @@ namespace DecisionDiagrams
             //     }
             //     result = this.Manager.Allocate(new SingleVarOpDDNode(resultVariable, resultLow, resultHigh));
             // }
-            // Treat the case where a is an AND node
+            // HashSet<int> impliedLiterals = new HashSet<int>(); // TODO this is part of a future optimization
+            // addImpliedLiteralsToSet(a, impliedLiterals);
+            // addImpliedLiteralsToSet(b, impliedLiterals);
 
+
+        static List<int> FixedValues = new List<int>();
+
+        /// <summary>
+        /// Computes the conjunction of a and b; specifically, constructs a DDIndex representing a AND b
+        /// TODO use a cache
+        /// Note: this procedure does NOT use the Manager. Instead, it takes on the responsibility of cache itself
+        /// </summary>
+        /// <param name="aEdge"></param>
+        /// <param name="a"></param>
+        /// <param name="bEdge"></param>
+        /// <param name="b"></param>
+        /// <returns></returns>
+        /// <exception cref="System.NotImplementedException"></exception>
+        public DDIndex And(DDIndex aEdge, DDIndex bEdge) {
+            if (aEdge.IsComplemented() || bEdge.IsComplemented()) {
+                Console.WriteLine("Unsupported: complemented edges.");
+            }
+            const int unset = -1;
+            SingleVarOpDDNode a = this.Manager.getNodeFromIndex(aEdge);
+            SingleVarOpDDNode b = this.Manager.getNodeFromIndex(bEdge);
+            DDIndex resultLow, resultHigh;
+            int resultVariable;
+            DDIndex resultEdge;
+            SingleVarOpDDNode resultNode;
+            KeyValuePair<int, int> assignment;
+            /// Base cases
+            if (aEdge.IsZero()) return DDIndex.False;
+            if (bEdge.IsZero()) return DDIndex.False;
+            if (aEdge.IsOne()) return bEdge;
+            if (bEdge.IsOne()) return aEdge;
+            if (aEdge.Equals(bEdge)) return aEdge;
+            if (aEdge.isComplementOf(bEdge)) return DDIndex.False;
+            if (a.Variable == b.Variable) {
+                resultLow = And(a.Low, b.Low);
+                resultHigh = And(a.High, b.High);
+                resultVariable = a.Variable;
+            }
+            // Treat the case where a is an AND node
             else if (a.isVariableAnd() || b.isVariableAnd()) {
                 // get the highest implied node
                 if (a.isPositiveVariableAnd() && b.isPositiveVariableAnd()) {
@@ -102,15 +111,13 @@ namespace DecisionDiagrams
                     resultLow = DDIndex.False;
                     resultVariable = Math.Max(a.Variable, b.Variable);
                     if (a.Variable > b.Variable) {
-                        assignment = new KeyValuePair<int, int>(a.Variable, 1);
-                        fixedValues.Add(assignment);
+                        FixedValues[resultVariable] = 1;
                         resultHigh = this.And(a.High, bEdge);
-                        fixedValues.Remove(assignment);
+                        FixedValues[resultVariable] = unset;
                     } else if (a.Variable < b.Variable) {
-                        assignment = new KeyValuePair<int, int>(b.Variable, 1);
-                        fixedValues.Add(assignment);
+                        FixedValues[resultVariable] = 1;
                         resultHigh = this.And(aEdge, b.High);
-                        fixedValues.Remove(assignment);
+                        FixedValues[resultVariable] = unset;
                     } else {  // TODO this case is subsumed by the above
                         resultHigh = And(a.High, b.High);
                     }
@@ -121,52 +128,85 @@ namespace DecisionDiagrams
                     }
                     resultVariable = a.Variable;
                     resultLow = DDIndex.False;
-                    assignment = new KeyValuePair<int, int>(a.Variable, 1);
-                    fixedValues.Add(assignment);
+                    FixedValues[resultVariable] = 1;
                     resultHigh = this.And(a.High, bEdge);
-                    fixedValues.Remove(assignment);
-                } else {
+                    FixedValues[resultVariable] = unset;
+                } else if (b.isPositiveVariableAnd()) {
                     // b is a positive variable. We maintain the invariant that b.Variable < a.Variable
                     resultVariable = b.Variable;
                     resultLow = DDIndex.False;
-                    assignment = new KeyValuePair<int, int>(b.Variable, 1);
-                    fixedValues.Add(assignment);
+                    FixedValues[resultVariable] = 1;
                     resultHigh = this.And(aEdge, b.High);
-                    fixedValues.Remove(assignment);
+                    FixedValues[resultVariable] = unset;
+                } else {
+                    Console.WriteLine("Unsupported: Negative Variable And");
                 }
-
-                // a = x and g   b = something else
-                // HashSet<int> impliedLiterals = new HashSet<int>(); // TODO this is part of a future optimization
-                // addImpliedLiteralsToSet(a, impliedLiterals);
-                // addImpliedLiteralsToSet(b, impliedLiterals);
             } else {
                 // Both nodes are Shannon nodes
-                if (a.Variable < b.Variable)
-                {
-                    if (fixedValues)
-                    var xlow = this.Manager.Apply(a.Low, bEdge, DDOperation.And);
-                    var xhigh = this.Manager.Apply(a.High, bEdge, DDOperation.And);
-                    return this.Manager.Allocate(new SingleVarOpDDNode(a.Variable, xlow, xhigh));
+                DDIndex activeEdge   = (a.Variable > b.Variable) ? aEdge : bEdge;
+                DDIndex passiveEdge  = (a.Variable > b.Variable) ? bEdge : aEdge;
+                SingleVarOpDDNode activeNode, passiveNode;
+                activeNode  = (a.Variable > b.Variable) ? a : b;
+                passiveNode = (a.Variable > b.Variable) ? b : a;
+                int targetVariable = Math.Max(a.Variable, b.Variable);
+                resultVariable = targetVariable;
+                if (FixedValues[targetVariable] == unset) {
+                    resultLow  = And(activeNode.Low,  passiveEdge);
+                    resultHigh = And(activeNode.High, passiveEdge);
+                } else if (FixedValues[targetVariable] == 0) {
+                    resultLow = DDIndex.False;
+                    resultHigh = And(activeNode.High, passiveEdge);
+                } else { // is 1
+                    resultLow  = And(activeNode.Low,  passiveEdge);
+                    resultHigh = DDIndex.False;
                 }
-                else if (b.Variable < a.Variable)
-                {
-                    var ylow = this.Manager.Apply(b.Low, aEdge, DDOperation.And);
-                    var yhigh = this.Manager.Apply(b.High, aEdge, DDOperation.And);
-                    return this.Manager.Allocate(new SingleVarOpDDNode(b.Variable, ylow, yhigh));
-                }
-                else
-                {
-                    var low = this.Manager.Apply(a.Low, b.Low, DDOperation.And);
-                    var high = this.Manager.Apply(a.High, b.High, DDOperation.And);
-                    return this.Manager.Allocate(new SingleVarOpDDNode(a.Variable, low, high));
-                }
+                // if (a.Variable < b.Variable)  // OLD CODE - keep for reference for a while
+                // {
+                //     if (FixedValues[b.Variable] == unset) {
+                //         resultLow  = this.Manager.Apply(a.Low, bEdge, DDOperation.And);
+                //         resultHigh = this.Manager.Apply(a.High, bEdge, DDOperation.And);
+                //         return this.Manager.Allocate(new SingleVarOpDDNode(a.Variable, xlow, xhigh));
+                //     } else if (FixedValues[b.Variable] == 0) {
+                //         resultLow  = DDIndex.False;
+                //         resultHigh = And(aEdge, b.High);
+                //     } else { // is 1
+                //         resultLow  = And(aEdge, b.Low);
+                //         resultHigh = DDIndex.False;
+                //     }
+                //     return this.Manager.Allocate(new SingleVarOpDDNode(b.Variable, resultLow, resultHigh));
+                // }
+                // else if (b.Variable < a.Variable)
+                // {
+                //     var ylow = this.Manager.Apply(b.Low, aEdge, DDOperation.And);
+                //     var yhigh = this.Manager.Apply(b.High, aEdge, DDOperation.And);
+                //     return this.Manager.Allocate(new SingleVarOpDDNode(b.Variable, ylow, yhigh));
+                // }
+                // else
+                // {
+                //     var low = this.Manager.Apply(a.Low, b.Low, DDOperation.And);
+                //     var high = this.Manager.Apply(a.High, b.High, DDOperation.And);
+                //     return this.Manager.Allocate(new SingleVarOpDDNode(a.Variable, low, high));
+                // }
             }
-            return this.Manager.Allocate(new SingleVarOpDDNode(resultVariable, resultLow, resultHigh));
+            resultNode = new SingleVarOpDDNode(resultVariable, resultLow, resultHigh);
+            resultEdge = ReduceAndAllocate(resultNode);
+            return resultEdge;
+        }
+
+        public DDIndex Or(DDIndex a, DDIndex b) {
+            DDIndex notA = a.Flip();
+            DDIndex notB = b.Flip();
+            DDIndex notAandNotB = And(notA, notB);
+            return notAandNotB.Flip();
         }
 
         public DDIndex Apply(DDIndex xid, SingleVarOpDDNode x, DDIndex yid, SingleVarOpDDNode y, DDOperation operation)
         {
-            if (operation == DDOperation.And) return And(xid, yid);
+            for (int i=FixedValues.Count; i < this.Manager.NumVariables; i++) {
+                FixedValues.Add(-1);
+            }
+            if (operation == DDOperation.And)
+                return And(xid, yid);
             throw new System.NotImplementedException();
         }
 
@@ -207,12 +247,23 @@ namespace DecisionDiagrams
         /// <param name="result"></param>
         /// <returns>if a reduction occurred</returns>
         /// <exception cref="System.NotImplementedException"></exception>
-        public bool Reduce(SingleVarOpDDNode node, out DDIndex result)
+        public void ReduceAndAllocate(SingleVarOpDDNode node, out DDIndex result)
         {
+            SingleVarOpDDNode lowNode = this.Manager.getNodeFromIndex(node.Low);
+            SingleVarOpDDNode highNode = this.Manager.getNodeFromIndex(node.High);
+            SingleVarOpDDNode resultNode = new SingleVarOpDDNode();
             // if node.low = x AND g   and   node.high = x AND then node should imply x
-            if (node.isPositiveVariableAnd()) {
-                return false;
+            if ( lowNode.isPositiveVariableAnd() && highNode.isPositiveVariableAnd() && lowNode.Variable == highNode.Variable ) {
+                // TODO keep track of complement bits
+                resultNode.Low = DDIndex.False;
+                resultNode.Variable = lowNode.Variable;
+                SingleVarOpDDNode resultHighNode = new SingleVarOpDDNode();
+                resultHighNode.Low = lowNode.High;
+                resultHighNode.High = highNode.High;
+                resultHighNode.Variable = node.Variable;
+                resultNode.High = this.Manager.Allocate(resultHighNode);
             }
+            result = this.Manager.Allocate(resultNode);
             throw new System.NotImplementedException();
         }
 
