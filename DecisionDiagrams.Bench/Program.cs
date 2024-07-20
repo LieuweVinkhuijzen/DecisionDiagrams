@@ -5,7 +5,7 @@
 using System;
 using DecisionDiagrams;
 using DecisionDiagrams.Bench;
-using DecisionDiagrams.Tests;
+// using DecisionDiagrams.Tests;
 
 namespace DecisionDiagrams.Bench
 {
@@ -21,7 +21,7 @@ namespace DecisionDiagrams.Bench
         static void Main(string[] args)
         {
             // GenerateCNF.generateCNFs(18, 4 * 18, 30);
-            DiagramSVODDTests.RunTests();
+            DiagramSVOBDDTests.RunTests();
 
             // var manager = new DDManager<CBDDNode>();
             // var q = new Queens<CBDDNode>(manager, 13);

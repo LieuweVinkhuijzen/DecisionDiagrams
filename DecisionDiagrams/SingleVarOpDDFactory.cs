@@ -30,48 +30,10 @@ namespace DecisionDiagrams
         long IDDNodeFactory<SingleVarOpDDNode>.MaxVariables { get => throw new System.NotImplementedException(); set => throw new System.NotImplementedException(); }
 
         /// <summary>
-        /// So the thing is that normally the variable index is just the next variable + 1, right
-        /// but here, ... I don't know, actually.
-        /// TODO figure this out
+        /// Follow an edge to a node, applying the negation bit to its children.
         /// </summary>
-        /// <param name="xid"></param>
-        /// <param name="yid"></param>
-        /// <returns></returns>
-        private int getOpVariableIndex(SingleVarOpDDNode x, SingleVarOpDDNode y) {
-            return Math.Max(x.Variable, y.Variable) + 1;
-        }
-            // TODO I used to think that this would be faster
-            // if (a.Variable == b.Variable) {
-            //     // Can be summarized as if a.low == 0 then result.low == 0 and a.high == 0 implies result.high == 0
-            //     resultVariable = a.Variable;
-            //     // Get low node
-            //     if (a.Low.IsZero() || b.Low.IsZero()) {
-            //         resultLow = DDIndex.False;
-            //     } else if (a.Low.IsOne()) {
-            //         resultLow = b.Low;
-            //     } else if (b.Low.IsOne()) {
-            //         resultLow = a.Low;
-            //     } else {
-            //         // both a.low, b.low are not constant
-            //         resultLow = this.Manager.Apply(a.Low, b.Low, DDOperation.And);
-            //     }
-
-            //     // Get high node
-            //     if (a.High.IsZero() || b.High.IsZero()) {
-            //         resultHigh = DDIndex.False;
-            //     } else if (a.High.IsOne()) {
-            //         resultHigh = b.High;
-            //     } else if (b.High.IsOne()) {
-            //         resultHigh = a.High;
-            //     } else {
-            //         resultHigh = this.Manager.Apply(a.High, b.High, DDOperation.And);
-            //     }
-            //     result = this.Manager.Allocate(new SingleVarOpDDNode(resultVariable, resultLow, resultHigh));
-            // }
-            // HashSet<int> impliedLiterals = new HashSet<int>(); // TODO this is part of a future optimization
-            // addImpliedLiteralsToSet(a, impliedLiterals);
-            // addImpliedLiteralsToSet(b, impliedLiterals);
-
+        /// <param name="edge"></param>
+        /// <returns>a node.</returns>.
         private SingleVarOpDDNode FollowEdge(DDIndex edge) {
             SingleVarOpDDNode node = this.Manager.getNodeFromIndex(edge);
             if (edge.IsComplemented()) {
@@ -88,34 +50,29 @@ namespace DecisionDiagrams
         // If b implies x2, and is implied by x3, consider the point (x2=0, x3=1). Then we have x3 implies b, so b=1. But b implies x2, and x2=0, so b=0. QED.
         // Conclusion: Always just switch on the highest-index variable
         // a = x2 * a'   b = x3 + b'
-        // a*b = x2*a'*x3 + x2*a'*b' = !x3*x2*a'*b' | x3*x2*a'*!b'
-        // a = x2 | a'   b = x3 + 
+        // a*b = x2*a'*x3 + x2*a'*b' = !x3*x2*a'*b' | x3*x2*a'*!b'.
 
         static List<int> FixedValues = new List<int>();
 
         /// <summary>
         /// Computes the conjunction of a and b; specifically, constructs a DDIndex representing a AND b
         /// TODO use a cache
-        /// Note: this procedure does NOT use the Manager. Instead, it takes on the responsibility of cache itself
+        /// Note: this procedure does NOT use the Manager. Instead, it takes on the responsibility of cache itself.
         /// </summary>
         /// <param name="aEdge"></param>
-        /// <param name="a"></param>
         /// <param name="bEdge"></param>
-        /// <param name="b"></param>
         /// <returns></returns>
         /// <exception cref="System.NotImplementedException"></exception>
         public DDIndex And(DDIndex aEdge, DDIndex bEdge) {
             if (aEdge.IsComplemented() || bEdge.IsComplemented()) {
                 Console.WriteLine("Unsupported: complemented edges.");
             }
-            const int unset = -1;
             SingleVarOpDDNode a = FollowEdge(aEdge);
             SingleVarOpDDNode b = FollowEdge(bEdge);
             DDIndex resultLow, resultHigh;
             int resultVariable;
-            DDIndex resultEdge;
             SingleVarOpDDNode resultNode;
-            /// Base cases
+            // Base cases
             if (aEdge.IsZero()) return DDIndex.False;
             if (bEdge.IsZero()) return DDIndex.False;
             if (aEdge.IsOne()) return bEdge;
@@ -128,21 +85,21 @@ namespace DecisionDiagrams
                 resultHigh = And(a.High, b.High);
                 resultVariable = a.Variable;
             }
-            else if (a.isVariableAnd() || b.isVariableAnd()) {
+            else if (a.IsVariableAnd() || b.IsVariableAnd()) {
                 // get the highest implied node
                 SingleVarOpDDNode activeNode  = a.Variable > b.Variable ? a : b;
                 SingleVarOpDDNode passiveNode = a.Variable > b.Variable ? b : a;
                 DDIndex passiveEdge           = a.Variable > b.Variable ? bEdge : aEdge;
                 Debug.Assert(activeNode.Variable > passiveNode.Variable, "ERR1: active variable < passive.variable");
-                Debug.Assert(activeNode.isVariableAnd(), "ERROR 3: active node is not a Variable And, i.e., is not of the form x AND f");
+                Debug.Assert(activeNode.IsVariableAnd(), "ERROR 3: active node is not a Variable And, i.e., is not of the form x AND f");
                 resultVariable = activeNode.Variable;
-                if (activeNode.isPositiveVariableAnd()) {
+                if (activeNode.IsPositiveVariableAnd()) {
                         resultLow = DDIndex.False;
                         FixedValues[resultVariable] = 1;
                         resultHigh = this.And(activeNode.High, passiveEdge);
                         FixedValues[resultVariable] = unset;
                 } else {
-                    Debug.Assert(activeNode.isNegativeVariableAnd(), "ERROR 4: active node is not negative variable AND");
+                    Debug.Assert(activeNode.IsNegativeVariableAnd(), "ERROR 4: active node is not negative variable AND");
                     resultHigh = DDIndex.False;
                     FixedValues[resultVariable] = 0;
                     resultLow = this.And(activeNode.Low, passiveEdge);
@@ -196,7 +153,8 @@ namespace DecisionDiagrams
                 // }
             }
             resultNode = new SingleVarOpDDNode(resultVariable, resultLow, resultHigh);
-            resultEdge = ReduceAndAllocate(resultNode);
+            DDIndex resultEdge;
+            ReduceAndAllocate(resultNode, out resultEdge);
             return resultEdge;
         }
 
@@ -209,7 +167,7 @@ namespace DecisionDiagrams
 
         public DDIndex Apply(DDIndex xid, SingleVarOpDDNode x, DDIndex yid, SingleVarOpDDNode y, DDOperation operation)
         {
-            for (int i=FixedValues.Count; i < this.Manager.NumVariables; i++) {
+            for (int i = FixedValues.Count; i < this.Manager.NumVariables; i++) {
                 FixedValues.Add(-1);
             }
             if (operation == DDOperation.And)
@@ -254,7 +212,7 @@ namespace DecisionDiagrams
         /// <param name="result"></param>
         /// <returns>if a reduction occurred.</returns>
         /// <exception cref="System.NotImplementedException"></exception>
-        public bool Reduce(SingleVarOpDDNode node, out DDIndex result)
+        public bool ReduceAndAllocate(SingleVarOpDDNode node, out DDIndex result)
         {
             // if node.low = x AND g   and   node.high = x AND then node should imply x
             bool flipped = false;
