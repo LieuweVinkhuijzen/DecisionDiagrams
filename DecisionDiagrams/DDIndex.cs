@@ -126,6 +126,7 @@ namespace DecisionDiagrams
             return this.Index == other.Index;
         }
 
+        #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
         public bool isComplementOf(DDIndex other) {
             return this.GetPosition() == other.GetPosition() && (this.IsComplemented() ^ other.IsComplemented());
         }

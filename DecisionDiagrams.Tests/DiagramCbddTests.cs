@@ -2,7 +2,7 @@
 // Copyright (c) Microsoft. All rights reserved.
 // </copyright>
 
-namespace DecisionDiagram.Tests
+namespace DecisionDiagrams.Tests
 {
     using System.Diagnostics.CodeAnalysis;
     using DecisionDiagrams;

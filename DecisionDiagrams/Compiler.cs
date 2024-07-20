@@ -10,12 +10,13 @@ namespace DecisionDiagrams {
     // compile a set of constraints, given as DDs
     // <typeparam name="T"> the type of decision diagram node (BDD, CBDD, etc.)
     // </summary>
-#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+    #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
     public class Compiler<T> where T : IDDNode, IEquatable<T> {
-#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
         private HashSet<DD> constraints;
         private DDManager<T> manager;
 
+        /// <summary>
+        /// </summary>
         public CompilationStrategy compilationStrategy;
 
         public enum CompilationStrategy {
@@ -124,9 +125,12 @@ namespace DecisionDiagrams {
             if (constr.Count % 2 == 1) {
                 constr[0] = manager.And(constr[0], constr[constr.Count - 1]);
             }
+            int nAndsPerformed = 0;
             for (int jump = 1; jump < constr.Count; jump *= 2) {
                 for (int i = 0; i + jump < constr.Count; i += jump) {
                     constr[i] = manager.And(constr[i], constr[i + jump]);
+                    nAndsPerformed++;
+                    Console.WriteLine($"Ands performed: {nAndsPerformed}");
                 }
             }
             return constr[0];

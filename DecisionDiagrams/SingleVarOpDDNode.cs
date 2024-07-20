@@ -4,11 +4,10 @@ using System.Net.WebSockets;
 #pragma warning disable SA1505 // Opening braces should not be followed by blank line
 namespace DecisionDiagrams
 {
-#pragma warning restore SA1505 // Opening braces should not be followed by blank line
     /// <summary>
     /// A node which is either a Shannon node, or an Operator
     /// If it is an operator, then it has type either And, Or, or XOR
-    /// and the High edge points to a single variable (more specifically, it points to a SingleVarOpDDNode which depends on a single variable)
+    /// and the High edge points to a single variable (more specifically, it points to a SingleVarOpDDNode which depends on a single variable).
     /// </summary>
     public partial struct SingleVarOpDDNode : IDDNode, IEquatable<SingleVarOpDDNode> {
 
@@ -20,22 +19,24 @@ namespace DecisionDiagrams
     /// <summary>
     /// A pointer to the high node, including bit flip.
     /// </summary>
-
     public DDIndex High { get; set; }
 
     /// <summary>
     /// The variable on which this node branches.
     /// </summary>
     public int Variable { get; set; }
+    #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+    public bool Mark { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
     /// <summary>
     /// A helped bit to be used by algorithms that operate on the DD
     /// Indicates whether this node has been visited by that algorithm
-    /// This prevents the need for the algorithm to store a dynamically allocated HashSet<Node>, for example,
-    /// which significantly speeds up computation
+    /// This prevents the need for the algorithm to store a dynamically allocated HashSet, for example,
+    /// which significantly speeds up computation.
     /// </summary>
     public bool Visited;
 
+    #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
     public SingleVarOpDDNode(int variable, DDIndex lo, DDIndex hi) {
         this.Low = lo;
         this.High = hi;
@@ -53,16 +54,16 @@ namespace DecisionDiagrams
     /// possibly g is constant, so f is just the function f = [!]x.
     /// </summary>
     /// <returns></returns>
-    public bool isVariableAnd() {
+    public bool IsVariableAnd() {
         // If this node is a constant, then return false
-        return isPositiveVariableAnd() || isNegativeVariableAnd();
+        return IsPositiveVariableAnd() || IsNegativeVariableAnd();
     }
 
     /// <summary>
     /// Returns whether this function is of the form f = x AND g.
     /// </summary>
     /// <returns></returns>
-    public bool isPositiveVariableAnd() {
+    public bool IsPositiveVariableAnd() {
         return Low.IsZero() && !High.IsZero();
     }
 
@@ -70,55 +71,55 @@ namespace DecisionDiagrams
     /// Returns whether this function is of the form f = (Not x) AND g.
     /// </summary>
     /// <returns></returns>
-    public bool isNegativeVariableAnd() {
+    public bool IsNegativeVariableAnd() {
         return !Low.IsZero() && High.IsZero();
     }
 
-    public bool isVariableAnd(int var) {
-        return this.Variable == var && isVariableAnd();
+    public bool IsVariableAnd(int var) {
+        return this.Variable == var && IsVariableAnd();
     }
 
-    public bool isNotVariableAnd(int var) {
-        return this.Variable == var && isNegativeVariableAnd();
+    public bool IsNotVariableAnd(int var) {
+        return this.Variable == var && IsNegativeVariableAnd();
     }
 
     /// <summary>
-    /// This case can't happen in a reduced diagram, but ok
+    /// This case can't happen in a reduced diagram, but ok.
     /// </summary>
     /// <returns></returns>
-    public bool isVariableOr() {
-        return isPositiveVariableOr() || isNegativeVariableOr();
+    public bool IsVariableOr() {
+        return IsPositiveVariableOr() || IsNegativeVariableOr();
     }
 
-    public bool isPositiveVariableOr() {
+    public bool IsPositiveVariableOr() {
         return High.IsOne() && !Low.IsOne();
     }
 
-    public bool isNegativeVariableOr() {
+    public bool IsNegativeVariableOr() {
         return Low.IsOne() && !High.IsOne();
     }
 
-    public bool isOrNode(int var) {
-        return this.Variable == var && isVariableOr();
+    public bool IsOrNode(int var) {
+        return this.Variable == var && IsVariableOr();
     }
 
-    public bool isNotOrNode(int var) {
-        return this.Variable == var && isNegativeVariableOr();
+    public bool IsNotOrNode(int var) {
+        return this.Variable == var && IsNegativeVariableOr();
     }
 
     /// <summary>
     /// Returns whether the function can be written as f = x XOR g
-    /// where x is the top variable, and g is some function independent of x
+    /// where x is the top variable, and g is some function independent of x.
     /// </summary>
     /// <returns></returns>
-    public bool isXorNode() {
+    public bool IsXorNode() {
         if (Low.GetPosition() == High.GetPosition())
             return Low.IsComplemented() && !High.IsComplemented() || !Low.IsComplemented() && High.IsComplemented();
         return false;
     }
 
-    public bool isXorNode(int var) {
-        return this.Variable == var && isXorNode();
+    public bool IsXorNode(int var) {
+        return this.Variable == var && IsXorNode();
     }
 
     /// <summary>
@@ -126,27 +127,27 @@ namespace DecisionDiagrams
     /// </summary>
     /// <returns></returns>
     public bool isLiteral() {
-        return isPositiveLiteral() || isNegativeLiteral();
+        return isPositiveLiteral() || IsNegativeLiteral();
     }
 
     public bool isPositiveLiteral() {
         return Low.IsZero() && High.IsOne();
     }
 
-    public bool isNegativeLiteral() {
+    public bool IsNegativeLiteral() {
         return Low.IsOne() && High.IsZero();
     }
 
-    public bool isSingleVariableOperation() {
-        return isVariableAnd() || isVariableOr() || isVariableAnd();
+    public bool IsSingleVariableOperation() {
+        return IsVariableAnd() || IsVariableOr() || IsVariableAnd();
     }
 
-    public bool isNontrivialFunction() {
-        return !isSingleVariableOperation();
+    public bool IsNontrivialFunction() {
+        return !IsSingleVariableOperation();
     }
 
-    public bool isConstant() {
+    public bool IsConstant() {
         return Low.IsZero() && High.IsZero() || Low.IsOne() && High.IsOne();
     }
-
+    }
 }

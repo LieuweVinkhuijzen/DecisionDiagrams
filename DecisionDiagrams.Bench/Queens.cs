@@ -81,6 +81,7 @@ namespace DecisionDiagrams.Bench
             } */
         }
 
+        #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
         public void RunCompile() {
             Compiler<T> compiler = new (manager);
             // Add the constraints to the compiler

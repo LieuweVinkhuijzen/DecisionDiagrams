@@ -222,7 +222,7 @@ namespace DecisionDiagrams
                 nodeFactory.Manager = this;
                 nodeFactory.MaxVariables = (long)(1U << 15) - 1;
             }
-            else if (typeof(T) == typeof(SingleVarOpDDNode) {
+            else if (typeof(T) == typeof(SingleVarOpDDNode)) {
                 nodeFactory = (IDDNodeFactory<T>)(object)new SingleVarOpDDFactory();
                 nodeFactory.Manager = this;
                 nodeFactory.MaxVariables = (long)(1U << 31) - 1;
@@ -1388,6 +1388,7 @@ namespace DecisionDiagrams
         }
 
         /// <summary>
+        /// TODO move the reduction logic into Factory.
         /// Compute the apply of two functions.
         /// </summary>
         /// <param name="x">The first function.</param>
@@ -2246,6 +2247,7 @@ namespace DecisionDiagrams
             return Bitops.NextPowerOfTwo(arg);
         }
 
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
         public T getNodeFromIndex(DDIndex index) {
             return this.MemoryPool[index.GetPosition()];
         }
