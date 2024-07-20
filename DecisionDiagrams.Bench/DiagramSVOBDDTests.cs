@@ -1,7 +1,6 @@
+using System;
+using DecisionDiagrams;
 namespace DecisionDiagrams {
-    using System;
-    using DecisionDiagrams;
-
     /// <summary>
     /// Tests for SBOBDD.
     /// </summary>
@@ -11,6 +10,7 @@ namespace DecisionDiagrams {
         /// </summary>
         public static void RunTests() {
             Console.WriteLine("Running all tests");
+            TestSingleVariable();
         }
 
         /// <summary>
@@ -18,6 +18,7 @@ namespace DecisionDiagrams {
         /// </summary>
         public static void TestSingleVariable() {
             Console.WriteLine("Hello, Test!");
+            DDManager<SingleVarOpDDNode> manager = new DDManager<SingleVarOpDDNode>();
         }
     }
 }

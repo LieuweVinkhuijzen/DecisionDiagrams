@@ -289,7 +289,7 @@ namespace DecisionDiagrams
                 flipResult = true;
             }
 
-            if (this.factory.ReduceAndAllocate(node, out DDIndex result))
+            if (this.factory.Reduce(node, out DDIndex result))
             {
                 return flipResult ? result.Flip() : result;
             }

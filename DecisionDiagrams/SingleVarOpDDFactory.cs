@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.ComponentModel.Design;
 using System.Diagnostics;
 using System.Linq.Expressions;
+using System.Runtime.Serialization;
 
 namespace DecisionDiagrams
 {
@@ -21,12 +22,16 @@ namespace DecisionDiagrams
         private static readonly int unset = -1; // the value we assign to a variable that has not been set to 0 or 1
         public SingleVarOpDDFactory()
         {
-            //
+            this.Manager = null;
             MaxVariables = 128;
-            Manager = new DDManager<SingleVarOpDDNode>();
         }
 
-        DDManager<SingleVarOpDDNode> IDDNodeFactory<SingleVarOpDDNode>.Manager { get => throw new System.NotImplementedException(); set => throw new System.NotImplementedException(); }
+        DDManager<SingleVarOpDDNode> IDDNodeFactory<SingleVarOpDDNode>.Manager { get {
+            return Manager;
+        }
+        set {
+            Manager = value;
+        } }
         long IDDNodeFactory<SingleVarOpDDNode>.MaxVariables { get => throw new System.NotImplementedException(); set => throw new System.NotImplementedException(); }
 
         /// <summary>
@@ -353,6 +358,11 @@ namespace DecisionDiagrams
                 dd3 = this.Manager.Allocate(new SingleVarOpDDNode(Math.Abs(var3), dd2, DDIndex.False));
             }
             return dd3;
+        }
+
+        public bool Reduce(SingleVarOpDDNode node, out DDIndex result)
+        {
+            throw new NotImplementedException();
         }
     }
 }
