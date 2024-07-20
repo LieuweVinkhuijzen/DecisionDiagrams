@@ -6,6 +6,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
+using System.Diagnostics;
 
 namespace DecisionDiagrams
 {
@@ -65,6 +66,24 @@ namespace DecisionDiagrams
             // addImpliedLiteralsToSet(a, impliedLiterals);
             // addImpliedLiteralsToSet(b, impliedLiterals);
 
+        private SingleVarOpDDNode FollowEdge(DDIndex edge) {
+            SingleVarOpDDNode node = this.Manager.getNodeFromIndex(edge);
+            if (edge.IsComplemented()) {
+                node.Low = node.Low.Flip();
+                node.High = node.High.Flip();
+            }
+            return node;
+        }
+        // Suppose you have two nodes for different variables, and they are OR and AND, so
+        // a = x2 * a'   b = x3 | b'
+        // a*b = (x2*a') * (x3 | b') = x2*x3*a' | x2*a'*b'
+        // Can a node have both b = x3 | b' and b = x2 * b''? No, that can't happen, by Ashenhurst's Theorem.
+        // Short proof just for good form:
+        // If b implies x2, and is implied by x3, consider the point (x2=0, x3=1). Then we have x3 implies b, so b=1. But b implies x2, and x2=0, so b=0. QED.
+        // Conclusion: Always just switch on the highest-index variable
+        // a = x2 * a'   b = x3 + b'
+        // a*b = x2*a'*x3 + x2*a'*b' = !x3*x2*a'*b' | x3*x2*a'*!b'
+        // a = x2 | a'   b = x3 + 
 
         static List<int> FixedValues = new List<int>();
 
@@ -84,13 +103,12 @@ namespace DecisionDiagrams
                 Console.WriteLine("Unsupported: complemented edges.");
             }
             const int unset = -1;
-            SingleVarOpDDNode a = this.Manager.getNodeFromIndex(aEdge);
-            SingleVarOpDDNode b = this.Manager.getNodeFromIndex(bEdge);
+            SingleVarOpDDNode a = FollowEdge(aEdge);
+            SingleVarOpDDNode b = FollowEdge(bEdge);
             DDIndex resultLow, resultHigh;
             int resultVariable;
             DDIndex resultEdge;
             SingleVarOpDDNode resultNode;
-            KeyValuePair<int, int> assignment;
             /// Base cases
             if (aEdge.IsZero()) return DDIndex.False;
             if (bEdge.IsZero()) return DDIndex.False;
@@ -99,47 +117,30 @@ namespace DecisionDiagrams
             if (aEdge.Equals(bEdge)) return aEdge;
             if (aEdge.isComplementOf(bEdge)) return DDIndex.False;
             if (a.Variable == b.Variable) {
+                Debug.Assert(FixedValues[a.Variable] == unset, "ERR2: fixed value of {a.Variable} to {FixedValues[a.Variable]} before branching on both node.");
                 resultLow = And(a.Low, b.Low);
                 resultHigh = And(a.High, b.High);
                 resultVariable = a.Variable;
             }
-            // Treat the case where a is an AND node
             else if (a.isVariableAnd() || b.isVariableAnd()) {
                 // get the highest implied node
-                if (a.isPositiveVariableAnd() && b.isPositiveVariableAnd()) {
-                    // One of the variables is higher
-                    resultLow = DDIndex.False;
-                    resultVariable = Math.Max(a.Variable, b.Variable);
-                    if (a.Variable > b.Variable) {
+                SingleVarOpDDNode activeNode  = a.Variable > b.Variable ? a : b;
+                SingleVarOpDDNode passiveNode = a.Variable > b.Variable ? b : a;
+                DDIndex passiveEdge           = a.Variable > b.Variable ? bEdge : aEdge;
+                Debug.Assert(activeNode.Variable > passiveNode.Variable, "ERR1: active variable < passive.variable");
+                Debug.Assert(activeNode.isVariableAnd(), "ERROR 3: active node is not a Variable And, i.e., is not of the form x AND f");
+                resultVariable = activeNode.Variable;
+                if (activeNode.isPositiveVariableAnd()) {
+                        resultLow = DDIndex.False;
                         FixedValues[resultVariable] = 1;
-                        resultHigh = this.And(a.High, bEdge);
+                        resultHigh = this.And(activeNode.High, passiveEdge);
                         FixedValues[resultVariable] = unset;
-                    } else if (a.Variable < b.Variable) {
-                        FixedValues[resultVariable] = 1;
-                        resultHigh = this.And(aEdge, b.High);
-                        FixedValues[resultVariable] = unset;
-                    } else {  // TODO this case is subsumed by the above
-                        resultHigh = And(a.High, b.High);
-                    }
-                } else if (a.isPositiveVariableAnd()) {
-                    // Then we demand that a.Variable < b.Variable
-                    if (!(a.Variable < b.Variable)) {
-                        Console.Write("ERR1: variable index was {a.Variable} >= {b.Variable}");
-                    }
-                    resultVariable = a.Variable;
-                    resultLow = DDIndex.False;
-                    FixedValues[resultVariable] = 1;
-                    resultHigh = this.And(a.High, bEdge);
-                    FixedValues[resultVariable] = unset;
-                } else if (b.isPositiveVariableAnd()) {
-                    // b is a positive variable. We maintain the invariant that b.Variable < a.Variable
-                    resultVariable = b.Variable;
-                    resultLow = DDIndex.False;
-                    FixedValues[resultVariable] = 1;
-                    resultHigh = this.And(aEdge, b.High);
-                    FixedValues[resultVariable] = unset;
                 } else {
-                    Console.WriteLine("Unsupported: Negative Variable And");
+                    Debug.Assert(activeNode.isNegativeVariableAnd(), "ERROR 4: active node is not negative variable AND");
+                    resultHigh = DDIndex.False;
+                    FixedValues[resultVariable] = 0;
+                    resultLow = this.And(activeNode.Low, passiveEdge);
+                    FixedValues[resultVariable] = unset;
                 }
             } else {
                 // Both nodes are Shannon nodes
@@ -148,7 +149,7 @@ namespace DecisionDiagrams
                 SingleVarOpDDNode activeNode, passiveNode;
                 activeNode  = (a.Variable > b.Variable) ? a : b;
                 passiveNode = (a.Variable > b.Variable) ? b : a;
-                int targetVariable = Math.Max(a.Variable, b.Variable);
+                int targetVariable = activeNode.Variable;
                 resultVariable = targetVariable;
                 if (FixedValues[targetVariable] == unset) {
                     resultLow  = And(activeNode.Low,  passiveEdge);
