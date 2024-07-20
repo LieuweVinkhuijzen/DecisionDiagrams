@@ -2,11 +2,13 @@
 // Copyright (c) Microsoft. All rights reserved.
 // </copyright>
 
+using System;
+using DecisionDiagrams;
+using DecisionDiagrams.Bench;
+using DecisionDiagrams.Tests;
+
 namespace DecisionDiagrams.Bench
 {
-    using System;
-    using DecisionDiagrams;
-
     /// <summary>
     /// Main program for the benchmarks.
     /// </summary>
@@ -18,7 +20,8 @@ namespace DecisionDiagrams.Bench
         /// <param name="args">Command line arguments.</param>
         static void Main(string[] args)
         {
-            GenerateCNF.generateCNFs(18, 4 * 18, 30);
+            // GenerateCNF.generateCNFs(18, 4 * 18, 30);
+            DiagramSVODDTests.RunTests();
 
             // var manager = new DDManager<CBDDNode>();
             // var q = new Queens<CBDDNode>(manager, 13);

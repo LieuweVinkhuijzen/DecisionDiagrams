@@ -7,17 +7,23 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
 using System.Diagnostics;
+using System.Linq.Expressions;
 
 namespace DecisionDiagrams
 {
+    #pragma warning disable SA1501 // Statement should not be on a single line
     class SingleVarOpDDFactory : IDDNodeFactory<SingleVarOpDDNode>
     {
         public DDManager<SingleVarOpDDNode> Manager;
 
         public long MaxVariables;
+
+        private static readonly int unset = -1; // the value we assign to a variable that has not been set to 0 or 1
         public SingleVarOpDDFactory()
         {
             //
+            MaxVariables = 128;
+            Manager = new DDManager<SingleVarOpDDNode>();
         }
 
         DDManager<SingleVarOpDDNode> IDDNodeFactory<SingleVarOpDDNode>.Manager { get => throw new System.NotImplementedException(); set => throw new System.NotImplementedException(); }
@@ -242,30 +248,36 @@ namespace DecisionDiagrams
         }
 
         /// <summary>
-        /// Makes sure that if f implies x, then x is one of the first variables that is branched on
+        /// Makes sure that if f implies x, then x is one of the first variables that is branched on.
         /// </summary>
         /// <param name="node"></param>
         /// <param name="result"></param>
-        /// <returns>if a reduction occurred</returns>
+        /// <returns>if a reduction occurred.</returns>
         /// <exception cref="System.NotImplementedException"></exception>
-        public void ReduceAndAllocate(SingleVarOpDDNode node, out DDIndex result)
+        public bool Reduce(SingleVarOpDDNode node, out DDIndex result)
         {
+            // if node.low = x AND g   and   node.high = x AND then node should imply x
+            bool flipped = false;
+            if (node.Low.Equals(node.High)) {
+                result = node.Low;
+                return false;
+            }
+            if (node.Low.Equals(DDIndex.True)) {
+                node.Low = node.Low.Flip();
+                node.High = node.High.Flip();
+                flipped = true;
+            }
+            result = this.Manager.Allocate(node);
+            if (flipped) {
+                result.Flip();
+            }
+            // TODO
             SingleVarOpDDNode lowNode = this.Manager.getNodeFromIndex(node.Low);
             SingleVarOpDDNode highNode = this.Manager.getNodeFromIndex(node.High);
-            SingleVarOpDDNode resultNode = new SingleVarOpDDNode();
-            // if node.low = x AND g   and   node.high = x AND then node should imply x
-            if ( lowNode.isPositiveVariableAnd() && highNode.isPositiveVariableAnd() && lowNode.Variable == highNode.Variable ) {
-                // TODO keep track of complement bits
-                resultNode.Low = DDIndex.False;
-                resultNode.Variable = lowNode.Variable;
-                SingleVarOpDDNode resultHighNode = new SingleVarOpDDNode();
-                resultHighNode.Low = lowNode.High;
-                resultHighNode.High = highNode.High;
-                resultHighNode.Variable = node.Variable;
-                resultNode.High = this.Manager.Allocate(resultHighNode);
+            if (lowNode.IsPositiveVariableAnd() && highNode.IsPositiveVariableAnd() && lowNode.Variable == highNode.Variable) {
+                // TODO pull it up
             }
-            result = this.Manager.Allocate(resultNode);
-            throw new System.NotImplementedException();
+            return false;
         }
 
         public DDIndex Replace(DDIndex xid, SingleVarOpDDNode x, VariableMap<SingleVarOpDDNode> variableMap)
@@ -286,7 +298,7 @@ namespace DecisionDiagrams
         /// <summary>
         /// For a given function which implies literals  f ==> x * !y * z,
         /// adds the variables x, -y, z to the set
-        /// TODO does not take into account complement bits
+        /// TODO does not take into account complement bits.
         /// </summary>
         /// <param name="v"></param>
         /// <param name="impliedLiterals"></param>
@@ -294,8 +306,8 @@ namespace DecisionDiagrams
             SingleVarOpDDNode u = v;
             bool complement = false;
 
-            while (u.isVariableAnd()) {
-                if (u.isPositiveVariableAnd()) {
+            while (u.IsVariableAnd()) {
+                if (u.IsPositiveVariableAnd()) {
                     if (complement)
                         impliedLiterals.Add(-u.Variable);
                     else
@@ -317,11 +329,11 @@ namespace DecisionDiagrams
         /// <summary>
         /// Returns the first encountered non-trivial descendant in a walk from this node to the leaf
         /// A descendant is trivial if its function is non-constant, and is not of the form f(x,y) = x * g(y)
-        /// TODO should we return a node, or an index?
+        /// TODO should we return a node, or an index?.
         /// </summary>
         /// <returns></returns>
         public SingleVarOpDDNode getFirstNontrivialDescendant(SingleVarOpDDNode v) {
-            while (!v.isNontrivialFunction()) {
+            while (!v.IsNontrivialFunction()) {
                 v = getNonConstantChild(v);
             }
             return v;
@@ -337,7 +349,7 @@ namespace DecisionDiagrams
         /// Traverses the DD to find out whether the function depends on the variable x.
         /// TODO can be optimized by taking variable order into account
         /// TODO can be optimized by checking in advance whether low, high == Constant
-        ///    (this will result in fewer function calls)
+        ///    (this will result in fewer function calls).
         /// </summary>
         /// <param name="v"></param>
         /// <param name="x"></param>
@@ -355,12 +367,11 @@ namespace DecisionDiagrams
         }
 
         public void clearVisited(DDIndex v) {
-
         }
 
         /// <summary>
         /// constructs a BDD for the disjunction var1 OR var2 OR var3
-        /// use a negative integer to indicate a negated variable, e.g., -3 will translate to Not x3
+        /// use a negative integer to indicate a negated variable, e.g., -3 will translate to Not x3.
         /// </summary>
         /// <param name="var1"></param>
         /// <param name="var2"></param>

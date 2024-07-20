@@ -3,6 +3,7 @@ using System.IO;
 using System.Security.Cryptography;
 
 namespace DecisionDiagrams {
+    #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
     public class GenerateCNF {
         public static void generateCNFs(int nVariables, int nClauses, int nFormulas) {
             String fileName;
